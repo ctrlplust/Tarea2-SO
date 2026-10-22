@@ -2,9 +2,9 @@
 
 Torneo de Komikan en tiempo real con hilos POSIX: matchmaker, M mesas concurrentes, juez por mesa y 13 fichas por partida.
 
-**Integrantes:** TODO: nombre — rol
-
-**Estado:** en desarrollo.
+**Integrantes:** TODO:
+Tomas Nunez
+Benjamin Zuniga
 
 ## Compilar
 
@@ -15,7 +15,7 @@ make asan P=pasoN     # con AddressSanitizer -> bin/pasoN-asan
 make clean
 ```
 
-## Uso (versión final)
+## Uso
 
 ```sh
 ./torneo N M [config.txt]
