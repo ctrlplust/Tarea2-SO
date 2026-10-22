@@ -2,7 +2,7 @@
 
 Torneo de Komikan en tiempo real con hilos POSIX: matchmaker, M mesas concurrentes, juez por mesa y 13 fichas por partida.
 
-**Integrantes:** TODO:
+**Integrantes:**
 Tomas Nunez - 
 Benjamin Zuniga
 
