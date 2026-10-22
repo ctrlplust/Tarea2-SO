@@ -4,7 +4,7 @@ Torneo de Komikan en tiempo real con hilos POSIX: matchmaker, M mesas concurrent
 
 **Integrantes:**
 Tomas Nunez - 
-Benjamin Zuñiga
+Benjamin Zuniga
 
 ## Compilar
 
