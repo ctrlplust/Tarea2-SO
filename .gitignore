@@ -1,0 +1,22 @@
+# binarios
+bin/
+*.o
+
+# core dumps
+core
+core.*
+vgcore.*
+
+# LaTeX auxiliares
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# notas locales (no se suben)
+CLAUDE.md
+PLAN.md
+.claude/
