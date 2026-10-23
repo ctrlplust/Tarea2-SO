@@ -36,6 +36,19 @@ int cargar_config(const char *ruta, Config *cfg) {
         int dmin, dmax, pf, pc;
         if (sscanf(linea, "CONFIG SEED %u DELAY_MIN %d DELAY_MAX %d PUMA_INIT %d %d",
                    &seed, &dmin, &dmax, &pf, &pc) == 5) {
+
+// Validaciones de integridad
+            if (dmin < 0 || dmax < 0 || dmin > dmax) {
+                fprintf(stderr, "Advertencia: Delays invalidos (min: %d, max: %d). Usando defaults.\n", dmin, dmax);
+                fclose(f);
+                return -1;
+            }
+
+            if (pf < 0 || pf > 4 || pc < 0 || pc > 4) {
+                fprintf(stderr, "Advertencia: Posicion de puma fuera de rango (%d, %d). Usando defaults.\n", pf, pc);
+                fclose(f);
+                return -1;
+            }
             cfg->seed = seed;
             cfg->delay_min = dmin;
             cfg->delay_max = dmax;
