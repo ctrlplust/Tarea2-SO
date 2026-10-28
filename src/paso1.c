@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #define N_NODOS 28        // 0-24 grilla, 25=I, 26=T, 27=D
@@ -89,6 +90,30 @@ void construir_saltos_trono(void) {
     agregar_salto_doble(26, 2, 7);    // T-2-7
 }
 
+enum Ficha { LIBRE, PUMA, PERRO };
+
+typedef struct {
+    enum Ficha casilla[N_NODOS];
+    int puma;        // nodo donde está el puma
+    int capturas;
+} Tablero;
+
+bool son_vecinos(int a, int b) {
+    for (int i = 0; i < n_adj[a]; i++) {
+        if (adj[a][i] == b)
+            return true;
+    }
+    return false;
+}
+
+bool es_movimiento_valido(const Tablero *t, int desde, int hasta) {
+    return desde >= 0 && desde < N_NODOS        // 1. desde es un nodo real
+        && hasta >= 0 && hasta < N_NODOS        // 2. hasta es un nodo real
+        && t->casilla[desde] != LIBRE           // 3. en desde HAY una ficha
+        && t->casilla[hasta] == LIBRE           // 4. hasta está LIBRE
+        && son_vecinos(desde, hasta);           // 5. están a un paso
+}
+
 int main(void) {
     construir_grilla();
     construir_trono();
@@ -104,5 +129,26 @@ int main(void) {
     }
     for (int i = 0; i < n_saltos; i++)
         printf("%2d -(%2d)-> %2d\n", saltos[i].ini, saltos[i].com, saltos[i].fin);
+
+    // son_vecinos
+    assert(!son_vecinos(14, 15));   // borde: fin de fila 2 / inicio de fila 3
+    assert(!son_vecinos(14, 18));   // una diagonal del 14
+    assert( son_vecinos(14, 13));   // un vecino real del 14
+
+    // es_movimiento_valido
+    Tablero t = {0};                // todo LIBRE: funciona porque LIBRE = 0 (primero en el enum)
+    t.casilla[7] = PERRO;
+
+    assert( es_movimiento_valido(&t, 7, 12));   // válido
+    assert(!es_movimiento_valido(&t, 0, 1));    // en desde no hay ficha (falla la condición 3)
+    assert(!es_movimiento_valido(&t, 7, 11));   // no es vecino (diagonal)
+    assert(!es_movimiento_valido(&t, -1, 0));   // desde fuera de rango
+    assert(!es_movimiento_valido(&t, 7, 28));   // hasta fuera de rango
+
+    t.casilla[12] = PUMA;
+    t.puma = 12;
+    assert(!es_movimiento_valido(&t, 7, 12));   // casilla ocupada
+
+    printf("se aprobo el test, esta weno\n");
     return 0;
 }
