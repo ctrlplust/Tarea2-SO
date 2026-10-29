@@ -1,7 +1,12 @@
 CC     = gcc
 CFLAGS = -Wall -Wextra -std=c17 -pthread -g
-# paso a compilar con sanitizers: make tsan P=paso2
-P     ?= paso1
+P      ?= paso1
+
+# Regla por defecto al ejecutar solo 'make'
+all: servidor
+
+servidor: src/servidor.c | bin
+	$(CC) $(CFLAGS) $< -o bin/$@
 
 paso%: src/paso%.c | bin
 	$(CC) $(CFLAGS) $< -o bin/$@
@@ -18,4 +23,4 @@ bin:
 clean:
 	rm -rf bin
 
-.PHONY: tsan asan clean
+.PHONY: all servidor tsan asan clean
