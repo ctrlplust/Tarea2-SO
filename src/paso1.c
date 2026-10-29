@@ -114,6 +114,50 @@ bool es_movimiento_valido(const Tablero *t, int desde, int hasta) {
         && son_vecinos(desde, hasta);           // 5. están a un paso
 }
 
+// el trío (a, b, c) es una línea recta de salto
+bool es_salto(int a, int b, int c) {
+    for (int i = 0; i < n_saltos; i++) {
+        if (saltos[i].ini == a && saltos[i].com == b && saltos[i].fin == c)
+            return true;
+    }
+    return false;
+}
+
+bool es_captura_valida(const Tablero *t, int desde, int sobre, int hasta) {
+    return desde >= 0 && desde < N_NODOS
+        && sobre >= 0 && sobre < N_NODOS
+        && hasta >= 0 && hasta < N_NODOS
+        && t->casilla[desde] == PUMA            // sólo el puma come
+        && t->casilla[sobre] == PERRO           // y come perros
+        && t->casilla[hasta] == LIBRE           // cae en casilla libre
+        && es_salto(desde, sobre, hasta);       // en línea recta
+}
+
+// victoria de los perros: el puma no puede moverse ni comer
+bool puma_sin_movimientos(const Tablero *t) {
+    int p = t->puma;
+    for (int i = 0; i < n_adj[p]; i++) {
+        if (es_movimiento_valido(t, p, adj[p][i]))
+            return false;
+    }
+    for (int i = 0; i < n_saltos; i++) {
+        if (saltos[i].ini == p && es_captura_valida(t, p, saltos[i].com, saltos[i].fin))
+            return false;
+    }
+    return true;
+}
+
+void imprimir_tablero(const Tablero *t) {
+    const char simbolo[] = {'.', 'P', 'o'};    // indexado por enum Ficha
+    printf("trono: %c %c %c\n", simbolo[t->casilla[25]], simbolo[t->casilla[26]], simbolo[t->casilla[27]]);
+    for (int id = 0; id < 25; id++) {
+        printf("%c ", simbolo[t->casilla[id]]);
+        if (id % 5 == 4)
+            printf("\n");
+    }
+    printf("capturas: %d\n", t->capturas);
+}
+
 int main(void) {
     construir_grilla();
     construir_trono();
@@ -148,6 +192,33 @@ int main(void) {
     t.casilla[12] = PUMA;
     t.puma = 12;
     assert(!es_movimiento_valido(&t, 7, 12));   // casilla ocupada
+
+    // ---- Puma acorralado ----
+    Tablero t2 = {0};
+    t2.casilla[0] = PUMA;
+    t2.puma = 0;
+    t2.casilla[1]  = PERRO;
+    t2.casilla[2]  = PERRO;
+    t2.casilla[5]  = PERRO;
+    t2.casilla[10] = PERRO;
+    t2.casilla[25] = PERRO;   // tapa el escape al trono
+    t2.casilla[26] = PERRO;   // y el salto (0,25,26)
+
+    imprimir_tablero(&t2);
+    assert( puma_sin_movimientos(&t2));   // encerrado
+
+    t2.casilla[1] = LIBRE;
+    assert(!puma_sin_movimientos(&t2));   // puede moverse al 1
+
+    t2.casilla[1] = PERRO;
+    t2.casilla[2] = LIBRE;
+    assert(!puma_sin_movimientos(&t2));   // puede comer: salto (0,1,2)
+
+    // ---- Capturas (mismo t2: puma en 0, perros en 1, 5, 10, 25, 26; el 2 libre) ----
+    assert( es_captura_valida(&t2, 0, 1, 2));    // válida
+    assert(!es_captura_valida(&t2, 0, 5, 10));   // hasta ocupado (perro en 10)
+    assert(!es_captura_valida(&t2, 5, 10, 15));  // la "come" un perro
+    assert(!es_captura_valida(&t2, 0, 1, 3));    // trío que no está en saltos[]
 
     printf("se aprobo el test, esta weno\n");
     return 0;
