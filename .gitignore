@@ -1,5 +1,6 @@
 # binarios
 bin/
+/torneo
 *.o
 
 # core dumps

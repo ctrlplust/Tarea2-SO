@@ -4,6 +4,7 @@
 #include "tablero.h"
 
 #include <assert.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -11,7 +12,7 @@ static int adj[N_NODOS][MAX_VEC];
 static int n_adj[N_NODOS];
 static Salto saltos[MAX_SALTOS];
 static int n_saltos;
-static int geometria_lista;
+static pthread_once_t geometria_once = PTHREAD_ONCE_INIT;
 
 static void agregar_vecino(int a, int b) {
     assert(n_adj[a] < MAX_VEC);
@@ -82,15 +83,17 @@ static void construir_saltos_trono(void) {
     agregar_salto_doble(26, 2, 7);    // T-2-7
 }
 
-void tablero_geometria_init(void) {
-    if (geometria_lista)
-        return;
+static void construir_geometria(void) {
     construir_grilla();
     construir_trono();
     construir_saltos_grilla();
     construir_saltos_trono();
     assert(n_saltos == MAX_SALTOS);
-    geometria_lista = 1;
+}
+
+// pthread_once: varias mesas pueden llamarla a la vez sin pisarse
+void tablero_geometria_init(void) {
+    pthread_once(&geometria_once, construir_geometria);
 }
 
 int nodo_de(int fila, int col) {

@@ -20,7 +20,7 @@
 
 #define CAPTURAS_VICTORIA  6
 #define MAX_MOVIMIENTOS 5000
-#define MAX_MS         15000
+#define MAX_MS         30000
 #define PERIODO_JUEZ_MS   50
 
 // Un solo lock para el log: las lineas de distintas mesas no se mezclan.
@@ -199,12 +199,15 @@ int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void)) {
     Ficha fichas[1 + N_PERROS];
     pthread_t hilos[1 + N_PERROS];
 
-    fichas[0] = (Ficha){&m, 0, m.t.puma, true, cfg->seed ^ 0x9e3779b9u};
+    // la semilla de cada ficha mezcla la del config con la mesa y el id:
+    // asi dos mesas con el mismo config no juegan la misma partida
+    unsigned base = cfg->seed ^ (unsigned)id_mesa * 2654435761u;
+    fichas[0] = (Ficha){&m, 0, m.t.puma, true, base ^ 0x9e3779b9u};
     int k = 1;
     for (int n = 0; n < N_CELDAS; n++) {
         if (m.t.casilla[n] != PERRO)
             continue;
-        fichas[k] = (Ficha){&m, k, n, false, cfg->seed + 7919u * (unsigned)k};
+        fichas[k] = (Ficha){&m, k, n, false, base + 7919u * (unsigned)k};
         k++;
     }
     if (k != 1 + N_PERROS) {
