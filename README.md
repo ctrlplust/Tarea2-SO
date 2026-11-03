@@ -46,6 +46,7 @@ las fichas al azar con la semilla configurada.
 - `src/tablero.c` — tablero como grafo, saltos y reglas (paso 1)
 - `src/paso2.c` — 13 hilos sin sincronizacion: la carrera a proposito
 - `src/paso3.c` — el mismo juego con un mutex por mesa
+- `src/paso3b.c` — el paso 3 con semaforo binario (comparacion para el informe)
 - `src/mesa.c` — juez, cond var, victoria y abandonos (paso 4)
 - `src/torneo.c` — matchmaker, semaforo de M mesas y SIGINT
 - `src/config.c` — parser de `config.txt`
