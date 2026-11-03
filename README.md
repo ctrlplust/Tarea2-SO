@@ -48,6 +48,7 @@ las fichas al azar con la semilla configurada.
 - `src/paso3.c` — el mismo juego con un mutex por mesa
 - `src/paso3b.c` — el paso 3 con semaforo binario (comparacion para el informe)
 - `src/mesa.c` — juez, cond var, victoria y abandonos (paso 4)
+- `src/paso8.c` — una ficha se cae con el lock tomado; mutex robusto vs comun
 - `src/torneo.c` — matchmaker, semaforo de M mesas y SIGINT
 - `src/config.c` — parser de `config.txt`
 - `tests/` casos de prueba (`test_cases.txt`)

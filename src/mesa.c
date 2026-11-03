@@ -36,6 +36,7 @@ typedef struct {
     long long inicio_ms;
     long long latido[1 + N_PERROS];   // ultima vez que se movio cada ficha
     int id_mesa;
+    int id_que_muere;            // paso 8: ficha que se cae con el lock tomado
     const Config *cfg;
 } Mesa;
 
@@ -79,12 +80,23 @@ static void log_mesa(int id_mesa, const char *fmt, ...) {
 }
 
 // El mutex de la mesa es "robusto": si el hilo que lo tiene se muere, el
-// siguiente lock no se cuelga, recibe EOWNERDEAD. Ahi hay que llamar a
-// pthread_mutex_consistent y avisar con -1, porque la partida ya no sirve.
-static int mesa_lock(pthread_mutex_t *m) {
-    int rc = pthread_mutex_lock(m);
+// siguiente lock no se cuelga, recibe EOWNERDEAD. Cuando pasa hay que hacer
+// tres cosas, en este orden:
+//   1. pthread_mutex_consistent, si no el mutex queda roto para siempre.
+//   2. marcar la partida como abortada, porque el tablero ya no es confiable.
+//   3. soltar el lock y devolver -1.
+// Lo de soltar es importante: el lock ya lo tomamos nosotros. Si volvieramos
+// sin soltarlo, el siguiente que entre recibe EOWNERDEAD de nuevo y se arma
+// una cadena de hilos muriendo uno atras del otro.
+static int mesa_lock(Mesa *m) {
+    int rc = pthread_mutex_lock(&m->m);
     if (rc == EOWNERDEAD) {
-        pthread_mutex_consistent(m);
+        pthread_mutex_consistent(&m->m);
+        m->terminada = 1;
+        m->ganador = -1;
+        log_mesa(m->id_mesa, "EOWNERDEAD: el dueno del lock murio, se recupera");
+        pthread_cond_broadcast(&m->cambio);
+        pthread_mutex_unlock(&m->m);
         return -1;
     }
     return rc == 0 ? 0 : -1;
@@ -139,7 +151,7 @@ static void *hilo_ficha(void *arg) {
             ms += (int)(rand_r(&f->seed) % (unsigned)rango);
         usleep((useconds_t)ms * 1000);          // dormir siempre afuera del lock
 
-        if (mesa_lock(&m->m) != 0)
+        if (mesa_lock(m) != 0)
             return NULL;                        // el dueno anterior murio con el lock
         if (m->terminada) {
             pthread_mutex_unlock(&m->m);
@@ -147,6 +159,16 @@ static void *hilo_ficha(void *arg) {
         }
 
         m->latido[f->id] = ahora_ms();          // "sigo vivo"
+
+        // Paso 8: esta ficha se cae en el medio, con el lock tomado y sin
+        // hacer unlock. Es como si el proceso del jugador se muriera de golpe.
+        // El mutex robusto es el que evita que la mesa quede trabada.
+        // Espera a que haya unos movimientos para que se vea una partida en
+        // curso y no una mesa recien abierta.
+        if (f->id == m->id_que_muere && m->movimientos >= 20) {
+            log_mesa(m->id_mesa, "ficha %d se cae CON EL LOCK TOMADO", f->id);
+            pthread_exit(NULL);
+        }
 
         bool movio = false;
         if (f->es_puma)
@@ -179,15 +201,37 @@ static const char *nombre_ganador(int g) {
     }
 }
 
+// Las tres versiones publicas de abajo son atajos de esta. `robusto` decide si
+// el mutex de la mesa se crea con PTHREAD_MUTEX_ROBUST o como un mutex comun.
+static int jugar_interna(int id_mesa, const Config *cfg, int (*abortar)(void),
+                         int id_que_muere, bool robusto);
+
 int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void)) {
+    return jugar_interna(id_mesa, cfg, abortar, -1, true);
+}
+
+int jugar_partida_con_fallo(int id_mesa, const Config *cfg,
+                            int (*abortar)(void), int id_que_muere) {
+    return jugar_interna(id_mesa, cfg, abortar, id_que_muere, true);
+}
+
+int jugar_partida_sin_robusto(int id_mesa, const Config *cfg,
+                              int (*abortar)(void), int id_que_muere) {
+    return jugar_interna(id_mesa, cfg, abortar, id_que_muere, false);
+}
+
+static int jugar_interna(int id_mesa, const Config *cfg, int (*abortar)(void),
+                         int id_que_muere, bool robusto) {
     Mesa m;
     memset(&m, 0, sizeof m);
     m.id_mesa = id_mesa;
+    m.id_que_muere = id_que_muere;
     m.cfg = cfg;
 
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
-    pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+    if (robusto)
+        pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
     pthread_mutex_init(&m.m, &attr);
     pthread_mutexattr_destroy(&attr);
     pthread_cond_init(&m.cambio, NULL);
@@ -228,7 +272,7 @@ int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void)) {
              cfg->puma_fila, cfg->puma_col, cfg->delay_min, cfg->delay_max);
 
     // --- bucle del juez ---
-    if (mesa_lock(&m.m) == 0) {
+    if (mesa_lock(&m) == 0) {
         // while y no if: el cond_wait puede despertar sin que nadie haya hecho
         // signal, asi que hay que volver a mirar la condicion
         while (!m.terminada) {
@@ -239,6 +283,7 @@ int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void)) {
             // revisa desconexiones y Ctrl+C aunque nadie se mueva
             if (rc == EOWNERDEAD) {             // una ficha murio con el lock
                 pthread_mutex_consistent(&m.m);
+                log_mesa(id_mesa, "EOWNERDEAD en el juez: el lock se recupera");
                 m.terminada = 1;
                 m.ganador = -1;
                 break;
@@ -269,10 +314,9 @@ int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void)) {
             }
         }
         pthread_mutex_unlock(&m.m);
-    } else {
-        m.terminada = 1;
-        m.ganador = -1;
     }
+    // Si mesa_lock devolvio -1 no hay nada que hacer aca: ya dejo terminada=1
+    // y ganador=-1 con el lock tomado, y las fichas van a salir solas.
 
     for (int i = 0; i < 1 + N_PERROS; i++)
         pthread_join(hilos[i], NULL);

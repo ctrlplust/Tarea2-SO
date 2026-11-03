@@ -20,6 +20,9 @@ paso%: src/paso%.c $(BASE) | bin
 paso4: src/paso4.c src/mesa.c $(BASE) | bin
 	$(CC) $(CFLAGS) $^ -o bin/$@
 
+paso8: src/paso8.c src/mesa.c $(BASE) | bin
+	$(CC) $(CFLAGS) $^ -o bin/$@
+
 tsan: src/$(P).c src/mesa.c src/config.c $(BASE) | bin
 	$(CC) $(CFLAGS) -fsanitize=thread $^ -o bin/$(P)-tsan
 

@@ -19,4 +19,17 @@ typedef struct {
 // Ctrl+C; el paso 4 le pasa NULL.
 int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void));
 
+// Igual que jugar_partida, pero la ficha `id_que_muere` (0 = puma, 1..12 =
+// perros, -1 = ninguna) se muere con el lock de la mesa tomado, cuando la
+// partida ya lleva unos movimientos. Sirve para el paso 8: probar que el mutex
+// robusto se recupera y la mesa no queda muerta.
+int jugar_partida_con_fallo(int id_mesa, const Config *cfg,
+                            int (*abortar)(void), int id_que_muere);
+
+// Lo mismo pero con un mutex comun, sin robusto. Si la ficha se muere con el
+// lock tomado la mesa queda trabada para siempre. Es solo para la comparacion
+// del paso 8: el torneo nunca usa esta.
+int jugar_partida_sin_robusto(int id_mesa, const Config *cfg,
+                              int (*abortar)(void), int id_que_muere);
+
 #endif
