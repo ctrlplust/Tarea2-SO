@@ -1,5 +1,4 @@
-// Tablero de Komikan como grafo. Es el paso 1 convertido en modulo para que
-// los pasos con hilos no repitan la geometria.
+// Tablero de Komikan como grafo. Es el paso 1 pasado a modulo.
 
 #include "tablero.h"
 
@@ -29,14 +28,16 @@ static void agregar_salto(int ini, int com, int fin) {
     saltos[n_saltos++] = (Salto){ini, com, fin};
 }
 
-// el del medio no cambia: se agrega el salto de ida y el de vuelta
+// el del medio no cambia: ida y vuelta comparten la casilla comida
 static void agregar_salto_doble(int a, int b, int c) {
     agregar_salto(a, b, c);
     agregar_salto(c, b, a);
 }
 
+// la grilla no tiene diagonales: cada casilla se conecta con la de arriba,
+// abajo, izquierda y derecha, y solo si existe
 static void construir_grilla(void) {
-    int df[4] = {-1, 1, 0, 0};   // arriba, abajo, izq, der
+    int df[4] = {-1, 1, 0, 0};
     int dc[4] = { 0, 0,-1, 1};
     for (int id = 0; id < N_CELDAS; id++) {
         int f = id / 5, c = id % 5;
@@ -48,8 +49,10 @@ static void construir_grilla(void) {
     }
 }
 
-// El trono es un triangulo: I(25)-T(26)-D(27), con la mediana T-2 y las
-// diagonales I-0, I-1, D-3, D-4 (I y D caen sobre el hueco entre columnas).
+// El trono es un triangulo. I(25) y D(27) caen sobre el hueco entre las
+// columnas 0-1 y 3-4, por eso cada uno toca dos casillas de la fila 0:
+// 25 va con 0 y 1, 27 va con 3 y 4. T(26) esta justo sobre la columna 2
+// y baja recto al nodo 2. Los tres se conectan entre si (el triangulo).
 static void construir_trono(void) {
     agregar_arista(26, 25);   // T-I
     agregar_arista(26, 27);   // T-D
@@ -61,6 +64,8 @@ static void construir_trono(void) {
     agregar_arista(27, 4);    // D-4
 }
 
+// salto de dos pasos en la grilla. El for ya genera los dos sentidos, por eso
+// aca no se usa agregar_salto_doble
 static void construir_saltos_grilla(void) {
     int df[4] = {-1, 1, 0, 0};
     int dc[4] = { 0, 0,-1, 1};
@@ -75,6 +80,8 @@ static void construir_saltos_grilla(void) {
     }
 }
 
+// los saltos que pasan por el trono. Son 5 lineas y cada una vale por los dos
+// sentidos, por eso van con agregar_salto_doble
 static void construir_saltos_trono(void) {
     agregar_salto_doble(26, 25, 0);   // T-I-0
     agregar_salto_doble(26, 27, 4);   // T-D-4
@@ -88,10 +95,11 @@ static void construir_geometria(void) {
     construir_trono();
     construir_saltos_grilla();
     construir_saltos_trono();
-    assert(n_saltos == MAX_SALTOS);
+    assert(n_saltos == MAX_SALTOS);   // 60 de la grilla + 10 del trono
 }
 
-// pthread_once: varias mesas pueden llamarla a la vez sin pisarse
+// varias mesas pueden llegar aca al mismo tiempo; pthread_once se encarga de
+// que construir_geometria corra una sola vez y las demas esperen
 void tablero_geometria_init(void) {
     pthread_once(&geometria_once, construir_geometria);
 }
@@ -121,8 +129,9 @@ int saltos_desde(int nodo, Salto *salida, int max) {
     return n;
 }
 
-// Los perros van en el borde sin las esquinas (12 justo). Si el puma ocupa una
-// de esas casillas se corre al siguiente candidato de la lista.
+// El borde sin las esquinas son justo 12 casillas: 1,2,3,5,9,10,14,15,19,21,
+// 22,23. El resto de la lista es relleno por si el puma arranca en una de esas
+// y hay que correrse a la siguiente.
 static const int orden_perros[N_CELDAS] = {
     1, 2, 3, 5, 9, 10, 14, 15, 19, 21, 22, 23,
     6, 7, 8, 11, 12, 13, 16, 17, 18, 0, 4, 20, 24
@@ -140,7 +149,7 @@ void tablero_iniciar(Tablero *t, int fila, int col) {
     for (int i = 0; i < N_CELDAS && puestos < N_PERROS; i++) {
         int n = orden_perros[i];
         if (n == p)
-            continue;
+            continue;               // la casilla del puma no lleva perro
         t->casilla[n] = PERRO;
         puestos++;
     }
@@ -162,12 +171,12 @@ void tablero_imprimir(const Tablero *t) {
 bool es_movimiento_valido(const Tablero *t, int desde, int hasta) {
     return desde >= 0 && desde < N_NODOS        // 1. desde es un nodo real
         && hasta >= 0 && hasta < N_NODOS        // 2. hasta es un nodo real
-        && t->casilla[desde] != LIBRE           // 3. en desde HAY una ficha
-        && t->casilla[hasta] == LIBRE           // 4. hasta esta LIBRE
+        && t->casilla[desde] != LIBRE           // 3. en desde hay alguna ficha
+        && t->casilla[hasta] == LIBRE           // 4. hasta esta libre
         && son_vecinos(desde, hasta);           // 5. estan a un paso
 }
 
-// el trio (a, b, c) es una linea recta de salto
+// busca (a,b,c) en la tabla de saltos. Solo mira la geometria, no las fichas
 static bool es_salto(int a, int b, int c) {
     for (int i = 0; i < n_saltos; i++)
         if (saltos[i].ini == a && saltos[i].com == b && saltos[i].fin == c)
@@ -181,10 +190,12 @@ bool es_captura_valida(const Tablero *t, int desde, int sobre, int hasta) {
         && hasta >= 0 && hasta < N_NODOS
         && t->casilla[desde] == PUMA            // solo el puma come
         && t->casilla[sobre] == PERRO           // y come perros
-        && t->casilla[hasta] == LIBRE           // cae en casilla libre
-        && es_salto(desde, sobre, hasta);       // en linea recta
+        && t->casilla[hasta] == LIBRE           // cae en una libre
+        && es_salto(desde, sobre, hasta);       // y el trio es una recta
 }
 
+// el puma esta acorralado si no puede caminar a ninguna libre Y tampoco puede
+// comer. Con que una de las dos cosas exista, todavia tiene jugada
 bool puma_sin_movimientos(const Tablero *t) {
     int p = t->puma;
     int vecinos[MAX_VEC];
@@ -209,7 +220,7 @@ bool tablero_mover(Tablero *t, int desde, int hasta) {
     t->casilla[desde] = LIBRE;
     t->casilla[hasta] = f;
     if (f == PUMA)
-        t->puma = hasta;
+        t->puma = hasta;        // mantener el atajo actualizado
     return true;
 }
 
@@ -217,7 +228,7 @@ bool tablero_capturar(Tablero *t, int desde, int sobre, int hasta) {
     if (!es_captura_valida(t, desde, sobre, hasta))
         return false;
     t->casilla[desde] = LIBRE;
-    t->casilla[sobre] = LIBRE;
+    t->casilla[sobre] = LIBRE;  // el perro comido desaparece
     t->casilla[hasta] = PUMA;
     t->puma = hasta;
     t->capturas++;

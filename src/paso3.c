@@ -1,7 +1,4 @@
-// Paso 3: el mismo juego, ahora con un mutex por mesa (opcion A del PLAN).
-// La clave es que el lock cubre validar Y mover: si solo protegieramos la
-// escritura, dos hilos podrian validar la misma casilla libre y los dos
-// escribirian. El usleep va FUERA del lock: nunca se duerme con el mutex tomado.
+// Paso 3: el mismo juego que el paso 2, pero con un mutex por mesa.
 
 #define _DEFAULT_SOURCE
 
@@ -31,11 +28,13 @@ static void *hilo_ficha(void *arg) {
     Ficha *f = arg;
     for (int i = 0; i < ITERACIONES; i++) {
         int ms = DELAY_MIN_MS + (int)(rand_r(&f->seed) % (DELAY_MAX_MS - DELAY_MIN_MS + 1));
-        usleep((useconds_t)ms * 1000);
+        usleep((useconds_t)ms * 1000);   // dormir va afuera del lock
 
         pthread_mutex_lock(&mutex_tablero);
 
-        // elegir, validar y mover: todo adentro del lock (check-then-act atomico)
+        // Lo importante: el lock cubre elegir, validar y mover. Si solo
+        // protegioramos la escritura, dos hilos podrian validar la misma
+        // casilla libre antes de que ninguno escriba, y mudarse los dos.
         int vecinos[MAX_VEC];
         int n = vecinos_de(f->pos, vecinos);
         int libres[MAX_VEC], m = 0;
@@ -62,8 +61,8 @@ int main(void) {
     Ficha fichas[1 + N_PERROS];
     pthread_t hilos[1 + N_PERROS];
 
-    // armar todas las fichas ANTES de crear hilos: si no, el puma ya se mueve
-    // mientras main todavia lee el tablero para ubicar a los perros
+    // las 13 fichas se arman antes de crear hilos: si no, el puma ya se mueve
+    // mientras main lee el tablero
     fichas[0] = (Ficha){0, tablero.puma, true, 42u};
 
     int k = 1;
@@ -87,6 +86,7 @@ int main(void) {
     printf("\n=== Fin del paso 3 (mutex por mesa) ===\n");
     tablero_imprimir(&tablero);
 
+    // con el lock bien puesto no se pierde ninguna ficha
     int pumas = tablero_contar(&tablero, PUMA);
     int perros = tablero_contar(&tablero, PERRO);
     int desinc = 0;

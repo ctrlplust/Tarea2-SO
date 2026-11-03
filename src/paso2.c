@@ -1,7 +1,4 @@
-// Paso 2: una partida con 13 hilos y SIN sincronizacion, a proposito.
-// Cada ficha decide su movimiento leyendo el tablero, duerme y despues actua
-// sin revalidar: entre la decision y la escritura otro hilo puede ocupar la
-// misma casilla. Compilar con -fsanitize=thread para ver el reporte.
+// Paso 2: 13 hilos sin ningun lock, a proposito, para que se vea la carrera.
 
 #define _DEFAULT_SOURCE
 
@@ -20,12 +17,13 @@ static Tablero tablero;
 
 typedef struct {
     int id;
-    int pos;          // posicion que el hilo cree tener
+    int pos;          // posicion que este hilo cree tener
     bool es_puma;
-    unsigned seed;    // rand_r por hilo: rand() no es thread-safe
+    unsigned seed;    // rand_r necesita una semilla propia por hilo
 } Ficha;
 
-// elige un vecino libre leyendo el tablero SIN lock: la decision puede quedar vieja
+// Lee el tablero sin lock, asi que la respuesta puede quedar vieja enseguida:
+// entre que elige y que escribe, otro hilo pudo ocupar esa casilla.
 static int elegir_destino(int pos, unsigned *seed) {
     int vecinos[MAX_VEC];
     int n = vecinos_de(pos, vecinos);
@@ -43,10 +41,12 @@ static void *hilo_ficha(void *arg) {
     for (int i = 0; i < ITERACIONES; i++) {
         int destino = elegir_destino(f->pos, &f->seed);
         int ms = DELAY_MIN_MS + (int)(rand_r(&f->seed) % (DELAY_MAX_MS - DELAY_MIN_MS + 1));
-        usleep((useconds_t)ms * 1000);
+        usleep((useconds_t)ms * 1000);   // "piensa" el movimiento
         if (destino < 0)
             continue;
-        // actua sin revalidar: aca esta la carrera
+
+        // Aca esta el problema: no se vuelve a chequear que destino siga libre.
+        // Las dos lineas de abajo pueden pisar lo que escribio otra ficha.
         tablero.casilla[f->pos] = LIBRE;
         tablero.casilla[destino] = f->es_puma ? PUMA : PERRO;
         f->pos = destino;
@@ -61,7 +61,7 @@ int main(void) {
     Ficha fichas[1 + N_PERROS];
     pthread_t hilos[1 + N_PERROS];
 
-    // armar todas las fichas ANTES de crear hilos: si no, el puma ya se mueve
+    // armar todas las fichas antes de crear hilos: si no, el puma ya se mueve
     // mientras main todavia lee el tablero para ubicar a los perros
     fichas[0] = (Ficha){0, tablero.puma, true, 42u};
 
@@ -86,6 +86,7 @@ int main(void) {
     printf("\n=== Fin del paso 2 (sin sincronizacion) ===\n");
     tablero_imprimir(&tablero);
 
+    // si la carrera paso, aca faltan fichas o alguna quedo en otra casilla
     int pumas = tablero_contar(&tablero, PUMA);
     int perros = tablero_contar(&tablero, PERRO);
     int desinc = 0;
@@ -102,7 +103,7 @@ int main(void) {
     if (pumas != 1 || perros != N_PERROS || desinc > 0)
         printf("CARRERA DETECTADA: el tablero quedo inconsistente\n");
     else
-        printf("esta corrida no mostro la carrera; repeti con delay 1 ms\n");
+        printf("esta corrida no mostro la carrera; repetir con delay 1 ms\n");
 
     return 0;
 }

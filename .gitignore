@@ -20,4 +20,6 @@ vgcore.*
 # notas locales (no se suben)
 CLAUDE.md
 PLAN.md
+NOTAS.md
 .claude/
+graphify-out/

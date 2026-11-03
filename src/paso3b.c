@@ -1,9 +1,5 @@
-// Paso 3b: la misma proteccion que el paso 3, pero con un semaforo binario
-// en vez de un mutex. Sirve para comparar en el informe.
-//
-// Diferencia clave: el semaforo no tiene dueno. Si un hilo muere con el lock
-// tomado, nadie lo puede recuperar (no existe EOWNERDEAD) y la mesa queda
-// muerta. Por eso el torneo final usa pthread_mutex robusto.
+// Paso 3b: igual que el paso 3 pero el lock es un semaforo binario.
+// Sirve para comparar con el mutex en el informe.
 
 #define _DEFAULT_SOURCE
 
@@ -21,7 +17,7 @@
 #define DELAY_MAX_MS   3
 
 static Tablero tablero;
-static sem_t lock;          // binario: 1 = libre, 0 = tomado
+static sem_t lock;          // 1 = libre, 0 = tomado (semaforo binario)
 static int movimientos;
 
 typedef struct {
@@ -31,6 +27,7 @@ typedef struct {
     unsigned seed;
 } Ficha;
 
+// sem_wait puede volver con EINTR si llega una senal; ahi hay que reintentar
 static void tomar(void) {
     int rc;
     do {
@@ -50,6 +47,7 @@ static void *hilo_ficha(void *arg) {
 
         tomar();
 
+        // mismo bloque que el paso 3: elegir, validar y mover con el lock tomado
         int vecinos[MAX_VEC];
         int n = vecinos_de(f->pos, vecinos);
         int libres[MAX_VEC], m = 0;

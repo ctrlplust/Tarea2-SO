@@ -1,7 +1,5 @@
-// Mesa de juego: 13 hilos (1 puma + 12 perros) y un hilo juez.
-// El juez es quien llama a jugar_partida(): crea las fichas, duerme en una
-// cond var hasta que alguna avisa que movio, revisa la victoria con el lock
-// tomado (foto consistente) y al final hace join de las 13.
+// Mesa de juego: 13 hilos (1 puma + 12 perros) y el juez, que es quien llama
+// a jugar_partida().
 
 #define _DEFAULT_SOURCE
 
@@ -23,8 +21,9 @@
 #define MAX_MS         30000
 #define PERIODO_JUEZ_MS   50
 
-// Un solo lock para el log: las lineas de distintas mesas no se mezclan.
-// Orden de locks: siempre m.m -> mutex_log, nunca al reves.
+// Un solo lock para el log, asi las lineas de distintas mesas no se mezclan.
+// Orden de locks: primero el mutex de la mesa y despues este. Nunca al reves,
+// si no dos mesas se pueden quedar trabadas.
 static pthread_mutex_t mutex_log = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
@@ -32,10 +31,10 @@ typedef struct {
     pthread_mutex_t m;
     pthread_cond_t cambio;
     int terminada;
-    int ganador;                 // 0 puma, 1 perros, 2 limite, -1 abortada
+    int ganador;                 // 0 puma, 1 perros, 2 tope, -1 abortada
     int movimientos;
     long long inicio_ms;
-    long long latido[1 + N_PERROS];
+    long long latido[1 + N_PERROS];   // ultima vez que se movio cada ficha
     int id_mesa;
     const Config *cfg;
 } Mesa;
@@ -54,7 +53,7 @@ static long long ahora_ms(void) {
     return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
-// pthread_cond_timedwait usa CLOCK_REALTIME por defecto
+// cond_timedwait usa CLOCK_REALTIME por defecto, no el monotono
 static struct timespec ts_en_ms(long ms) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -79,9 +78,9 @@ static void log_mesa(int id_mesa, const char *fmt, ...) {
     pthread_mutex_unlock(&mutex_log);
 }
 
-// Lock robusto: si el dueno murio con el mutex tomado, el kernel lo marca
-// inconsistente y el siguiente lock devuelve EOWNERDEAD. Ahi se repara y se
-// avisa con -1 para que el juez aborte la partida.
+// El mutex de la mesa es "robusto": si el hilo que lo tiene se muere, el
+// siguiente lock no se cuelga, recibe EOWNERDEAD. Ahi hay que llamar a
+// pthread_mutex_consistent y avisar con -1, porque la partida ya no sirve.
 static int mesa_lock(pthread_mutex_t *m) {
     int rc = pthread_mutex_lock(m);
     if (rc == EOWNERDEAD) {
@@ -101,6 +100,7 @@ static bool intentar_movimiento(Mesa *m, Ficha *f) {
     if (nl == 0)
         return false;
 
+    // elige una de las libres al azar y deja que tablero_mover valide de nuevo
     int destino = libres[rand_r(&f->seed) % (unsigned)nl];
     if (!tablero_mover(&m->t, f->pos, destino))
         return false;
@@ -137,7 +137,7 @@ static void *hilo_ficha(void *arg) {
         int ms = m->cfg->delay_min;
         if (rango > 1)
             ms += (int)(rand_r(&f->seed) % (unsigned)rango);
-        usleep((useconds_t)ms * 1000);          // el retardo va FUERA del lock
+        usleep((useconds_t)ms * 1000);          // dormir siempre afuera del lock
 
         if (mesa_lock(&m->m) != 0)
             return NULL;                        // el dueno anterior murio con el lock
@@ -146,11 +146,11 @@ static void *hilo_ficha(void *arg) {
             break;
         }
 
-        m->latido[f->id] = ahora_ms();
+        m->latido[f->id] = ahora_ms();          // "sigo vivo"
 
         bool movio = false;
         if (f->es_puma)
-            movio = intentar_captura(m, f);
+            movio = intentar_captura(m, f);     // el puma primero intenta comer
         if (!movio)
             movio = intentar_movimiento(m, f);
         if (movio) {
@@ -174,7 +174,7 @@ static const char *nombre_ganador(int g) {
     switch (g) {
     case 0:  return "el puma";
     case 1:  return "los perros";
-    case 2:  return "nadie (limite de tiempo)";
+    case 2:  return "nadie (tope de tiempo)";
     default: return "nadie (partida abortada)";
     }
 }
@@ -194,13 +194,13 @@ int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void)) {
 
     tablero_iniciar(&m.t, cfg->puma_fila, cfg->puma_col);
 
-    // armar las 13 fichas ANTES de crear hilos: si no, el puma ya se mueve
-    // mientras el juez todavia lee el tablero
+    // Las 13 fichas se arman antes de crear los hilos. Si se arman despues, el
+    // puma ya se estaria moviendo mientras el juez lee el tablero.
     Ficha fichas[1 + N_PERROS];
     pthread_t hilos[1 + N_PERROS];
 
-    // la semilla de cada ficha mezcla la del config con la mesa y el id:
-    // asi dos mesas con el mismo config no juegan la misma partida
+    // La semilla de cada ficha mezcla la del config con la mesa y el id, para
+    // que dos mesas con el mismo config no jueguen la misma partida.
     unsigned base = cfg->seed ^ (unsigned)id_mesa * 2654435761u;
     fichas[0] = (Ficha){&m, 0, m.t.puma, true, base ^ 0x9e3779b9u};
     int k = 1;
@@ -229,10 +229,14 @@ int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void)) {
 
     // --- bucle del juez ---
     if (mesa_lock(&m.m) == 0) {
+        // while y no if: el cond_wait puede despertar sin que nadie haya hecho
+        // signal, asi que hay que volver a mirar la condicion
         while (!m.terminada) {
             struct timespec ts = ts_en_ms(PERIODO_JUEZ_MS);
             int rc = pthread_cond_timedwait(&m.cambio, &m.m, &ts);
 
+            // el timedwait es para despertarse igual cada 50 ms: asi el juez
+            // revisa desconexiones y Ctrl+C aunque nadie se mueva
             if (rc == EOWNERDEAD) {             // una ficha murio con el lock
                 pthread_mutex_consistent(&m.m);
                 m.terminada = 1;
@@ -244,14 +248,14 @@ int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void)) {
                 m.ganador = -1;
             } else if (m.t.capturas >= CAPTURAS_VICTORIA) {
                 m.terminada = 1;
-                m.ganador = 0;
+                m.ganador = 0;                  // gana el puma
             } else if (puma_sin_movimientos(&m.t)) {
                 m.terminada = 1;
-                m.ganador = 1;
+                m.ganador = 1;                  // gana el cerco de perros
             } else if (m.movimientos >= MAX_MOVIMIENTOS ||
                        ahora_ms() - m.inicio_ms >= MAX_MS) {
                 m.terminada = 1;
-                m.ganador = 2;
+                m.ganador = 2;                  // tope, para no quedar en livelock
             } else {
                 long long ahora = ahora_ms();
                 for (int i = 0; i < 1 + N_PERROS; i++) {
