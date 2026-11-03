@@ -16,10 +16,13 @@ paso1: src/paso1.c | bin
 paso%: src/paso%.c $(BASE) | bin
 	$(CC) $(CFLAGS) $^ -o bin/$@
 
-tsan: src/$(P).c $(BASE) | bin
+paso4: src/paso4.c src/mesa.c $(BASE) | bin
+	$(CC) $(CFLAGS) $^ -o bin/$@
+
+tsan: src/$(P).c src/mesa.c $(BASE) | bin
 	$(CC) $(CFLAGS) -fsanitize=thread $^ -o bin/$(P)-tsan
 
-asan: src/$(P).c $(BASE) | bin
+asan: src/$(P).c src/mesa.c $(BASE) | bin
 	$(CC) $(CFLAGS) -fsanitize=address,undefined $^ -o bin/$(P)-asan
 
 bin:

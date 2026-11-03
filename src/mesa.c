@@ -1,0 +1,283 @@
+// Mesa de juego: 13 hilos (1 puma + 12 perros) y un hilo juez.
+// El juez es quien llama a jugar_partida(): crea las fichas, duerme en una
+// cond var hasta que alguna avisa que movio, revisa la victoria con el lock
+// tomado (foto consistente) y al final hace join de las 13.
+
+#define _DEFAULT_SOURCE
+
+#include "mesa.h"
+
+#include <errno.h>
+#include <pthread.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "tablero.h"
+
+#define CAPTURAS_VICTORIA  6
+#define MAX_MOVIMIENTOS 5000
+#define MAX_MS         15000
+#define PERIODO_JUEZ_MS   50
+
+// Un solo lock para el log: las lineas de distintas mesas no se mezclan.
+// Orden de locks: siempre m.m -> mutex_log, nunca al reves.
+static pthread_mutex_t mutex_log = PTHREAD_MUTEX_INITIALIZER;
+
+typedef struct {
+    Tablero t;
+    pthread_mutex_t m;
+    pthread_cond_t cambio;
+    int terminada;
+    int ganador;                 // 0 puma, 1 perros, 2 limite, -1 abortada
+    int movimientos;
+    long long inicio_ms;
+    long long latido[1 + N_PERROS];
+    int id_mesa;
+    const Config *cfg;
+} Mesa;
+
+typedef struct {
+    Mesa *mesa;
+    int id;                      // 0 = puma, 1..12 = perros
+    int pos;
+    bool es_puma;
+    unsigned seed;
+} Ficha;
+
+static long long ahora_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+// pthread_cond_timedwait usa CLOCK_REALTIME por defecto
+static struct timespec ts_en_ms(long ms) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += ms / 1000;
+    ts.tv_nsec += (ms % 1000) * 1000000L;
+    if (ts.tv_nsec >= 1000000000L) {
+        ts.tv_sec++;
+        ts.tv_nsec -= 1000000000L;
+    }
+    return ts;
+}
+
+static void log_mesa(int id_mesa, const char *fmt, ...) {
+    va_list ap;
+    pthread_mutex_lock(&mutex_log);
+    printf("[Mesa %d] ", id_mesa);
+    va_start(ap, fmt);
+    vprintf(fmt, ap);
+    va_end(ap);
+    printf("\n");
+    fflush(stdout);
+    pthread_mutex_unlock(&mutex_log);
+}
+
+// Lock robusto: si el dueno murio con el mutex tomado, el kernel lo marca
+// inconsistente y el siguiente lock devuelve EOWNERDEAD. Ahi se repara y se
+// avisa con -1 para que el juez aborte la partida.
+static int mesa_lock(pthread_mutex_t *m) {
+    int rc = pthread_mutex_lock(m);
+    if (rc == EOWNERDEAD) {
+        pthread_mutex_consistent(m);
+        return -1;
+    }
+    return rc == 0 ? 0 : -1;
+}
+
+static bool intentar_movimiento(Mesa *m, Ficha *f) {
+    int vecinos[MAX_VEC];
+    int n = vecinos_de(f->pos, vecinos);
+    int libres[MAX_VEC], nl = 0;
+    for (int i = 0; i < n; i++)
+        if (m->t.casilla[vecinos[i]] == LIBRE)
+            libres[nl++] = vecinos[i];
+    if (nl == 0)
+        return false;
+
+    int destino = libres[rand_r(&f->seed) % (unsigned)nl];
+    if (!tablero_mover(&m->t, f->pos, destino))
+        return false;
+    f->pos = destino;
+    return true;
+}
+
+static bool intentar_captura(Mesa *m, Ficha *f) {
+    Salto lista[MAX_SALTOS];
+    int n = saltos_desde(f->pos, lista, MAX_SALTOS);
+    int validos[MAX_SALTOS], nv = 0;
+    for (int i = 0; i < n; i++)
+        if (es_captura_valida(&m->t, f->pos, lista[i].com, lista[i].fin))
+            validos[nv++] = i;
+    if (nv == 0)
+        return false;
+
+    int k = validos[rand_r(&f->seed) % (unsigned)nv];
+    int comido = lista[k].com, fin = lista[k].fin;
+    if (!tablero_capturar(&m->t, f->pos, comido, fin))
+        return false;
+    log_mesa(m->id_mesa, "captura: puma %d -> %d (come %d), total %d",
+             f->pos, fin, comido, m->t.capturas);
+    f->pos = fin;
+    return true;
+}
+
+static void *hilo_ficha(void *arg) {
+    Ficha *f = arg;
+    Mesa *m = f->mesa;
+
+    for (;;) {
+        int rango = m->cfg->delay_max - m->cfg->delay_min + 1;
+        int ms = m->cfg->delay_min;
+        if (rango > 1)
+            ms += (int)(rand_r(&f->seed) % (unsigned)rango);
+        usleep((useconds_t)ms * 1000);          // el retardo va FUERA del lock
+
+        if (mesa_lock(&m->m) != 0)
+            return NULL;                        // el dueno anterior murio con el lock
+        if (m->terminada) {
+            pthread_mutex_unlock(&m->m);
+            break;
+        }
+
+        m->latido[f->id] = ahora_ms();
+
+        bool movio = false;
+        if (f->es_puma)
+            movio = intentar_captura(m, f);
+        if (!movio)
+            movio = intentar_movimiento(m, f);
+        if (movio) {
+            m->movimientos++;
+            pthread_cond_signal(&m->cambio);    // despierta al juez
+        }
+
+        pthread_mutex_unlock(&m->m);
+
+        // desconexion simulada: el hilo se va sin avisar y deja de latir
+        if (m->cfg->desconexion_pct > 0 &&
+            (int)(rand_r(&f->seed) % 100) < m->cfg->desconexion_pct) {
+            log_mesa(m->id_mesa, "ficha %d se desconecta", f->id);
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
+static const char *nombre_ganador(int g) {
+    switch (g) {
+    case 0:  return "el puma";
+    case 1:  return "los perros";
+    case 2:  return "nadie (limite de tiempo)";
+    default: return "nadie (partida abortada)";
+    }
+}
+
+int jugar_partida(int id_mesa, const Config *cfg, int (*abortar)(void)) {
+    Mesa m;
+    memset(&m, 0, sizeof m);
+    m.id_mesa = id_mesa;
+    m.cfg = cfg;
+
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+    pthread_mutex_init(&m.m, &attr);
+    pthread_mutexattr_destroy(&attr);
+    pthread_cond_init(&m.cambio, NULL);
+
+    tablero_iniciar(&m.t, cfg->puma_fila, cfg->puma_col);
+
+    // armar las 13 fichas ANTES de crear hilos: si no, el puma ya se mueve
+    // mientras el juez todavia lee el tablero
+    Ficha fichas[1 + N_PERROS];
+    pthread_t hilos[1 + N_PERROS];
+
+    fichas[0] = (Ficha){&m, 0, m.t.puma, true, cfg->seed ^ 0x9e3779b9u};
+    int k = 1;
+    for (int n = 0; n < N_CELDAS; n++) {
+        if (m.t.casilla[n] != PERRO)
+            continue;
+        fichas[k] = (Ficha){&m, k, n, false, cfg->seed + 7919u * (unsigned)k};
+        k++;
+    }
+    if (k != 1 + N_PERROS) {
+        log_mesa(id_mesa, "error: se armaron %d fichas", k);
+        pthread_cond_destroy(&m.cambio);
+        pthread_mutex_destroy(&m.m);
+        return -1;
+    }
+
+    m.inicio_ms = ahora_ms();
+    for (int i = 0; i < 1 + N_PERROS; i++)
+        m.latido[i] = m.inicio_ms;
+
+    for (int i = 0; i < 1 + N_PERROS; i++)
+        pthread_create(&hilos[i], NULL, hilo_ficha, &fichas[i]);
+
+    log_mesa(id_mesa, "inicio (puma en %d,%d, delay %d-%d ms)",
+             cfg->puma_fila, cfg->puma_col, cfg->delay_min, cfg->delay_max);
+
+    // --- bucle del juez ---
+    if (mesa_lock(&m.m) == 0) {
+        while (!m.terminada) {
+            struct timespec ts = ts_en_ms(PERIODO_JUEZ_MS);
+            int rc = pthread_cond_timedwait(&m.cambio, &m.m, &ts);
+
+            if (rc == EOWNERDEAD) {             // una ficha murio con el lock
+                pthread_mutex_consistent(&m.m);
+                m.terminada = 1;
+                m.ganador = -1;
+                break;
+            }
+            if (abortar && abortar()) {
+                m.terminada = 1;
+                m.ganador = -1;
+            } else if (m.t.capturas >= CAPTURAS_VICTORIA) {
+                m.terminada = 1;
+                m.ganador = 0;
+            } else if (puma_sin_movimientos(&m.t)) {
+                m.terminada = 1;
+                m.ganador = 1;
+            } else if (m.movimientos >= MAX_MOVIMIENTOS ||
+                       ahora_ms() - m.inicio_ms >= MAX_MS) {
+                m.terminada = 1;
+                m.ganador = 2;
+            } else {
+                long long ahora = ahora_ms();
+                for (int i = 0; i < 1 + N_PERROS; i++) {
+                    if (ahora - m.latido[i] > cfg->timeout_ms) {
+                        log_mesa(id_mesa, "abandono de la ficha %d", i);
+                        m.terminada = 1;
+                        m.ganador = (i == 0) ? 1 : 0;   // gana el rival
+                        break;
+                    }
+                }
+            }
+        }
+        pthread_mutex_unlock(&m.m);
+    } else {
+        m.terminada = 1;
+        m.ganador = -1;
+    }
+
+    for (int i = 0; i < 1 + N_PERROS; i++)
+        pthread_join(hilos[i], NULL);
+
+    pthread_mutex_lock(&mutex_log);
+    printf("[Mesa %d] fin: gana %s (capturas=%d, movimientos=%d)\n",
+           id_mesa, nombre_ganador(m.ganador), m.t.capturas, m.movimientos);
+    tablero_imprimir(&m.t);
+    fflush(stdout);
+    pthread_mutex_unlock(&mutex_log);
+
+    pthread_cond_destroy(&m.cambio);
+    pthread_mutex_destroy(&m.m);
+    return m.ganador;
+}
