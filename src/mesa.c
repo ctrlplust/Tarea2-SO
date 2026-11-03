@@ -20,6 +20,7 @@
 #define MAX_MOVIMIENTOS 5000
 #define MAX_MS         30000
 #define PERIODO_JUEZ_MS   50
+#define PERIODO_IMPRESION_MS 2000   // cada cuanto el juez imprime el tablero
 
 // Un solo lock para el log, asi las lineas de distintas mesas no se mezclan.
 // Orden de locks: primero el mutex de la mesa y despues este. Nunca al reves,
@@ -273,6 +274,8 @@ static int jugar_interna(int id_mesa, const Config *cfg, int (*abortar)(void),
 
     // --- bucle del juez ---
     if (mesa_lock(&m) == 0) {
+        long long ultima_impresion = ahora_ms();
+
         // while y no if: el cond_wait puede despertar sin que nadie haya hecho
         // signal, asi que hay que volver a mirar la condicion
         while (!m.terminada) {
@@ -311,6 +314,22 @@ static int jugar_interna(int id_mesa, const Config *cfg, int (*abortar)(void),
                         break;
                     }
                 }
+            }
+
+            // El enunciado pide ver el tablero mientras se juega, no solo al
+            // final. Se imprime cada 2 s y no en cada movimiento porque con 13
+            // fichas cada 50-300 ms seria una muralla de texto.
+            long long ahora_print = ahora_ms();
+            if (!m.terminada &&
+                ahora_print - ultima_impresion >= PERIODO_IMPRESION_MS) {
+                pthread_mutex_lock(&mutex_log);
+                printf("[Mesa %d] tablero a los %lld ms (movimientos=%d, capturas=%d)\n",
+                       id_mesa, ahora_print - m.inicio_ms, m.movimientos,
+                       m.t.capturas);
+                tablero_imprimir(&m.t);
+                fflush(stdout);
+                pthread_mutex_unlock(&mutex_log);
+                ultima_impresion = ahora_print;
             }
         }
         pthread_mutex_unlock(&m.m);
