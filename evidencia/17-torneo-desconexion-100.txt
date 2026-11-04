@@ -1,0 +1,27 @@
+=== Torneo Komikan: 2 jugadores, 1 mesas ===
+seed=7 delay=20-60 ms puma=2,2 desconexion=100% timeout=300 ms
+[Cola] jugador 1 espera rival
+[Mesa 1] inicio (puma en 2,2, delay 20-60 ms)
+[Mesa 1] ficha 1 se desconecta
+[Mesa 1] ficha 0 se desconecta
+[Mesa 1] ficha 8 se desconecta
+[Mesa 1] ficha 11 se desconecta
+[Mesa 1] ficha 5 se desconecta
+[Mesa 1] ficha 2 se desconecta
+[Mesa 1] ficha 12 se desconecta
+[Mesa 1] ficha 9 se desconecta
+[Mesa 1] ficha 6 se desconecta
+[Mesa 1] ficha 3 se desconecta
+[Mesa 1] ficha 10 se desconecta
+[Mesa 1] ficha 7 se desconecta
+[Mesa 1] ficha 4 se desconecta
+[Mesa 1] abandono de la ficha 0
+[Mesa 1] fin: gana los perros (capturas=0, movimientos=13)
+trono: . o .
+o . o . . 
+. o P o o 
+. o . . . 
+. o o o . 
+o . . . o 
+capturas: 0
+=== Servidor cerrado: 1 mesas atendidas (activas=0) ===

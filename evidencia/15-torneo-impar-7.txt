@@ -1,0 +1,256 @@
+=== Torneo Komikan: 7 jugadores, 2 mesas ===
+seed=42 delay=50-300 ms puma=2,2 desconexion=0% timeout=1700 ms
+[Cola] jugador 1 espera rival
+[Mesa 1] inicio (puma en 2,2, delay 50-300 ms)
+[Cola] jugador 3 espera rival
+[Mesa 2] inicio (puma en 2,2, delay 50-300 ms)
+[Cola] jugador 5 espera rival
+[Cola] jugador 7 espera rival
+[Cola] jugador 7 se queda sin rival (N impar)
+[Mesa 1] captura: puma 12 -> 10 (come 11), total 1
+[Mesa 2] captura: puma 12 -> 14 (come 13), total 1
+[Mesa 1] captura: puma 10 -> 20 (come 15), total 2
+[Mesa 2] captura: puma 18 -> 16 (come 17), total 2
+[Mesa 1] captura: puma 20 -> 22 (come 21), total 3
+[Mesa 1] captura: puma 22 -> 24 (come 23), total 4
+[Mesa 2] captura: puma 5 -> 7 (come 6), total 3
+[Mesa 2] captura: puma 7 -> 9 (come 8), total 4
+[Mesa 1] tablero a los 2020 ms (movimientos=118, capturas=4)
+trono: . . o
+. o . o . 
+o . o . . 
+. . . . . 
+. . P o o 
+. . . o . 
+capturas: 4
+[Mesa 2] tablero a los 2005 ms (movimientos=128, capturas=4)
+trono: . o o
+. o . P . 
+. . . . . 
+. . . . . 
+o . . o o 
+o . . o . 
+capturas: 4
+[Mesa 2] captura: puma 25 -> 6 (come 1), total 5
+[Mesa 2] captura: puma 6 -> 8 (come 7), total 6
+[Mesa 2] fin: gana el puma (capturas=6, movimientos=215)
+trono: . . .
+. . o . . 
+. . . P o 
+. . . . . 
+o . o . o 
+. . . . o 
+capturas: 6
+[Mesa 3] inicio (puma en 2,2, delay 50-300 ms)
+[Mesa 1] tablero a los 4020 ms (movimientos=237, capturas=4)
+trono: . . .
+o . . . . 
+o o . . . 
+. o P o . 
+o . . . . 
+. o o . . 
+capturas: 4
+[Mesa 3] captura: puma 12 -> 2 (come 7), total 1
+[Mesa 3] tablero a los 2033 ms (movimientos=137, capturas=1)
+trono: . P .
+o o . o . 
+o . . o o 
+. o o . o 
+. . . . . 
+. o . . o 
+capturas: 1
+[Mesa 1] tablero a los 6057 ms (movimientos=351, capturas=4)
+trono: o . o
+. o o . . 
+. o . . . 
+. . o . o 
+. . o . P 
+. . . . . 
+capturas: 4
+[Mesa 3] tablero a los 4050 ms (movimientos=273, capturas=1)
+trono: o . .
+o . P . . 
+o o . . o 
+. o . o . 
+. o o . o 
+o . . . . 
+capturas: 1
+[Mesa 1] tablero a los 8070 ms (movimientos=466, capturas=4)
+trono: . . o
+. o P . . 
+. . . o . 
+. . o . . 
+. o . . . 
+. . o o o 
+capturas: 4
+[Mesa 3] tablero a los 6058 ms (movimientos=407, capturas=1)
+trono: o . .
+. o o . . 
+o . o . . 
+. o o . . 
+. o . . o 
+P o . o . 
+capturas: 1
+[Mesa 1] tablero a los 10108 ms (movimientos=575, capturas=4)
+trono: . . .
+. . o . . 
+o . . . . 
+o . . o . 
+. . P o o 
+o . . o . 
+capturas: 4
+[Mesa 3] tablero a los 8094 ms (movimientos=549, capturas=1)
+trono: o . .
+o o . . . 
+. P . o o 
+o o . . o 
+o . o . . 
+. o . . . 
+capturas: 1
+[Mesa 1] tablero a los 12111 ms (movimientos=691, capturas=4)
+trono: . o o
+. . o o . 
+. o . . . 
+. o . . . 
+. P . o . 
+. . o . . 
+capturas: 4
+[Mesa 3] tablero a los 10109 ms (movimientos=694, capturas=1)
+trono: . o .
+o . . o o 
+. . . . o 
+. o . o o 
+. o . . . 
+. o P o . 
+capturas: 1
+[Mesa 1] tablero a los 14115 ms (movimientos=800, capturas=4)
+trono: . o .
+P . . . o 
+. . o o . 
+o . . . o 
+. . . . . 
+. o . . o 
+capturas: 4
+[Mesa 3] tablero a los 12116 ms (movimientos=829, capturas=1)
+trono: o . .
+. . o o . 
+o . . . . 
+. o . o o 
+. . o . o 
+P o . o . 
+capturas: 1
+[Mesa 1] tablero a los 16125 ms (movimientos=897, capturas=4)
+trono: . . o
+o . o . . 
+. o o . . 
+P o o . . 
+. . o . . 
+. . . . . 
+capturas: 4
+[Mesa 3] tablero a los 14117 ms (movimientos=976, capturas=1)
+trono: o . .
+. o . . . 
+. . o . o 
+. . P o o 
+. o . o . 
+o o . . o 
+capturas: 1
+[Mesa 1] tablero a los 18128 ms (movimientos=1008, capturas=4)
+trono: . o .
+. . o o . 
+. . o o . 
+. o . . . 
+. . . . . 
+. . o P o 
+capturas: 4
+[Mesa 3] tablero a los 16139 ms (movimientos=1121, capturas=1)
+trono: P . .
+. . . o . 
+o o . . o 
+o . o . o 
+. . o o . 
+o . o . . 
+capturas: 1
+[Mesa 1] tablero a los 20129 ms (movimientos=1113, capturas=4)
+trono: . o .
+o o o o . 
+. . . . . 
+. . . . . 
+. o P . o 
+. . . o . 
+capturas: 4
+[Mesa 3] tablero a los 18147 ms (movimientos=1261, capturas=1)
+trono: o . .
+. . o . o 
+o o P o o 
+. . o o o 
+. . . . . 
+o . . . . 
+capturas: 1
+[Mesa 1] tablero a los 22136 ms (movimientos=1225, capturas=4)
+trono: o . .
+. . o . o 
+. . o o o 
+. o . . . 
+. . . . P 
+o . . . . 
+capturas: 4
+[Mesa 1] captura: puma 21 -> 11 (come 16), total 5
+[Mesa 1] captura: puma 11 -> 13 (come 12), total 6
+[Mesa 1] fin: gana el puma (capturas=6, movimientos=1305)
+trono: . . o
+o o . o . 
+. . . . o 
+. . . P . 
+o . . . . 
+. . . . . 
+capturas: 6
+[Mesa 3] tablero a los 20155 ms (movimientos=1409, capturas=1)
+trono: o . o
+. . o . . 
+. . o . o 
+o . P . o 
+. o o . . 
+. o . . o 
+capturas: 1
+[Mesa 3] tablero a los 22190 ms (movimientos=1542, capturas=1)
+trono: . . o
+. o . o o 
+. o . . P 
+. . o o . 
+o o . . o 
+. . . o . 
+capturas: 1
+[Mesa 3] tablero a los 24201 ms (movimientos=1694, capturas=1)
+trono: P o .
+. . o o o 
+. . o . . 
+. . . . o 
+o . o . . 
+. o o o . 
+capturas: 1
+[Mesa 3] tablero a los 26207 ms (movimientos=1834, capturas=1)
+trono: o . .
+P o . o . 
+o o . o . 
+. o o . . 
+. . o o . 
+. . . . o 
+capturas: 1
+[Mesa 3] tablero a los 28210 ms (movimientos=1975, capturas=1)
+trono: o . .
+. P o o . 
+o o . o . 
+. . o . . 
+. . o . o 
+. o o . . 
+capturas: 1
+[Mesa 3] fin: gana nadie (tope de tiempo) (capturas=1, movimientos=2094)
+trono: . . .
+o . o . P 
+o . . o . 
+o o . o o 
+. . . o o 
+o . . . . 
+capturas: 1
+=== Servidor cerrado: 3 mesas atendidas (activas=0) ===

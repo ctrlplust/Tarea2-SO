@@ -1,0 +1,14 @@
+=== Paso 8: la ficha 3 se cae con el lock tomado (mutex robusto) ===
+[Mesa 1] inicio (puma en 2,2, delay 1-5 ms)
+[Mesa 1] captura: puma 12 -> 2 (come 7), total 1
+[Mesa 1] ficha 3 se cae CON EL LOCK TOMADO
+[Mesa 1] EOWNERDEAD: el dueno del lock murio, se recupera
+[Mesa 1] fin: gana nadie (partida abortada) (capturas=1, movimientos=26)
+trono: . o .
+. . P . o 
+. o . . o 
+o . . o . 
+o o o . . 
+. o . o . 
+capturas: 1
+resultado: -1 (-1 = partida abortada, el lock se recupero)

@@ -1,6 +1,6 @@
 # torneo de komikan concurrente
 
- **Informe:** esta en el docs
+ **Informe:** [docs/Informe_T2_Komikan.pdf](docs/Informe_T2_Komikan.pdf)
 
 Tomas Nunez - Benjamin Zuniga
 
@@ -29,6 +29,7 @@ src/config.c       el parser de config.txt
 src/paso1.c ...    la construccion por partes, un archivo por paso
 tests/             test_cases.txt, los 12 casos de la pauta
 docs/              informe (2 pags) + enunciado en pdf
+evidencia/         las salidas de las pruebas, tal cual se generaron
 ```
 
 `./torneo` queda en la raiz a proposito: el enunciado pide ejecutar
@@ -43,7 +44,7 @@ gcc -Wall -Wextra -std=c17 -pthread -g -o torneo \
 
 son los flags de la pauta mas `-g` para poder mirar los core si algo revienta.
 compila sin un solo warning. `-pthread` aca si se usa: todo el programa son
-hilos POSIX. `make torneo` (y `make` por defecto) corre exactamente esa linea.
+hilos POSIX. `make torneo` corre exactamente esa linea.
 
 el detalle que hace falta: con `-std=c17` (que es ISO estricto) glibc esconde
 las declaraciones POSIX, asi que los archivos que usan `sigwait`, `usleep` o
@@ -249,8 +250,13 @@ make asan P=torneo    # bin/torneo-asan
 ```
 
 `paso2` bajo TSan tiene que mostrar las carreras (es el punto del paso). `paso3`,
-`paso4` y `torneo` dan 0 warnings de TSan; `paso4` y `torneo` dan 0 errores de
-ASan/UBSan.
+`paso4` y `torneo` dan 0 warnings de TSan en una partida normal; si se corta
+`torneo` con SIGINT, TSan marca una carrera sobre la bandera `servidor_activo`
+(es un aviso de la bandera de cierre, no del tablero). `paso4` y `torneo` dan 0
+errores de ASan/UBSan.
+
+las salidas de consola de estas pruebas (sanitizers, paso8, topes de tiempo,
+N impar y desconexion) quedaron guardadas en `evidencia/`, tal como se generaron.
 
 el Ctrl+C hay que probarlo a mano, porque no se puede automatizar desde el
 Makefile:
@@ -350,6 +356,7 @@ murio. por eso el torneo usa mutex robusto y no semaforo para el tablero.
 | `src/config.c`, `src/config.h` | el parser de `config.txt` |
 | `src/paso1.c` ... `src/paso8.c` | la construccion paso a paso |
 | `tests/test_cases.txt` | los 12 casos de la pauta |
+| `evidencia/` | las salidas de consola de las pruebas, sin editar |
 | `docs/Informe_T2_Komikan.pdf` | el informe (2 paginas) |
 | `docs/T2_os_2026_02.pdf` | el enunciado |
 | `Makefile` | `all`, `pasoN`, `tsan`, `asan`, `clean` |

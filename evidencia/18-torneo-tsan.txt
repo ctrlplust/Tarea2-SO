@@ -1,0 +1,210 @@
+=== Torneo Komikan: 6 jugadores, 2 mesas ===
+seed=42 delay=50-300 ms puma=2,2 desconexion=0% timeout=1700 ms
+[Cola] jugador 1 espera rival
+[Mesa 1] inicio (puma en 2,2, delay 50-300 ms)
+[Cola] jugador 3 espera rival
+[Mesa 2] inicio (puma en 2,2, delay 50-300 ms)
+[Cola] jugador 5 espera rival
+[Mesa 1] captura: puma 12 -> 10 (come 11), total 1
+[Mesa 2] captura: puma 12 -> 14 (come 13), total 1
+[Mesa 1] captura: puma 10 -> 20 (come 15), total 2
+[Mesa 2] captura: puma 18 -> 16 (come 17), total 2
+[Mesa 1] captura: puma 20 -> 22 (come 21), total 3
+[Mesa 1] captura: puma 22 -> 24 (come 23), total 4
+[Mesa 2] captura: puma 10 -> 12 (come 11), total 3
+[Mesa 2] captura: puma 7 -> 26 (come 2), total 4
+[Mesa 1] tablero a los 2018 ms (movimientos=118, capturas=4)
+trono: . . .
+. . o . . 
+. . o . o 
+. o . . . 
+o . P o o 
+. . . o . 
+capturas: 4
+[Mesa 2] tablero a los 2010 ms (movimientos=123, capturas=4)
+trono: . P o
+. o . . o 
+o . . . o 
+. . . . . 
+o . . . o 
+o . . . . 
+capturas: 4
+[Mesa 2] captura: puma 27 -> 8 (come 3), total 5
+[Mesa 2] captura: puma 13 -> 23 (come 18), total 6
+[Mesa 2] fin: gana el puma (capturas=6, movimientos=160)
+trono: o . o
+. o . . . 
+. . . . o 
+. . . . . 
+. o . . . 
+. . . P o 
+capturas: 6
+[Mesa 3] inicio (puma en 2,2, delay 50-300 ms)
+[Mesa 3] captura: puma 12 -> 2 (come 7), total 1
+[Mesa 1] tablero a los 4052 ms (movimientos=239, capturas=4)
+trono: . . o
+o . o . . 
+. . . o . 
+o . P . o 
+o . . . o 
+. . . . . 
+capturas: 4
+[Mesa 3] tablero a los 2031 ms (movimientos=139, capturas=1)
+trono: . P o
+o o . . . 
+o . . o . 
+. o o . o 
+. . . . o 
+. o o . . 
+capturas: 1
+[Mesa 1] tablero a los 6056 ms (movimientos=354, capturas=4)
+trono: o . .
+o . . o o 
+. . . P . 
+o . o . . 
+. o . . . 
+. . . . o 
+capturas: 4
+[Mesa 3] tablero a los 4031 ms (movimientos=264, capturas=1)
+trono: o . .
+P . o o . 
+. o . o . 
+. o . . o 
+. . . . o 
+o . o o . 
+capturas: 1
+[Mesa 1] tablero a los 8084 ms (movimientos=460, capturas=4)
+trono: . . .
+. o . . o 
+. . o . o 
+. . . o o 
+. . . P . 
+. . o . o 
+capturas: 4
+[Mesa 3] tablero a los 6052 ms (movimientos=400, capturas=1)
+trono: . . o
+o P . . . 
+o . o o . 
+o . . . o 
+. o . . . 
+o . o o . 
+capturas: 1
+[Mesa 1] tablero a los 10106 ms (movimientos=573, capturas=4)
+trono: . . .
+. . . . . 
+o o o o o 
+. . . o . 
+. . o . o 
+. P . . . 
+capturas: 4
+[Mesa 1] captura: puma 16 -> 18 (come 17), total 5
+[Mesa 3] tablero a los 8060 ms (movimientos=537, capturas=1)
+trono: o . .
+o . P o . 
+. o o o . 
+o . . . o 
+. o . o o 
+. . . . . 
+capturas: 1
+[Mesa 3] captura: puma 7 -> 26 (come 2), total 2
+[Mesa 1] tablero a los 12109 ms (movimientos=670, capturas=5)
+trono: o . .
+. . . . o 
+. . o . P 
+. . . o . 
+. o . . o 
+. . . . o 
+capturas: 5
+[Mesa 3] captura: puma 26 -> 7 (come 2), total 3
+[Mesa 3] captura: puma 13 -> 3 (come 8), total 4
+[Mesa 3] captura: puma 3 -> 1 (come 2), total 5
+[Mesa 3] tablero a los 10097 ms (movimientos=671, capturas=5)
+trono: . . .
+. P . . o 
+. o o . . 
+. . . . . 
+o o . . . 
+. o . o . 
+capturas: 5
+[Mesa 3] captura: puma 1 -> 11 (come 6), total 6
+[Mesa 3] fin: gana el puma (capturas=6, movimientos=674)
+trono: . . .
+. . . . o 
+. . . o . 
+. P . . . 
+o o . . . 
+. o . . o 
+capturas: 6
+[Mesa 1] tablero a los 14130 ms (movimientos=765, capturas=5)
+trono: . P .
+. o . . o 
+. . . . . 
+o . o . . 
+o . . . o 
+. . o . . 
+capturas: 5
+[Mesa 1] tablero a los 16135 ms (movimientos=870, capturas=5)
+trono: . . .
+. o . . o 
+. . o . . 
+o P o . . 
+o . . . . 
+. o . . . 
+capturas: 5
+[Mesa 1] tablero a los 18174 ms (movimientos=965, capturas=5)
+trono: . . o
+. o o . o 
+o . . o . 
+. . . . . 
+. o . P . 
+. . . . . 
+capturas: 5
+[Mesa 1] tablero a los 20182 ms (movimientos=1058, capturas=5)
+trono: . . .
+o . o . . 
+. . . . . 
+o . o P . 
+. o . . . 
+o . o . . 
+capturas: 5
+[Mesa 1] tablero a los 22219 ms (movimientos=1158, capturas=5)
+trono: . o o
+. . . o o 
+. . . . . 
+. . . . . 
+o o . . . 
+o . . P . 
+capturas: 5
+[Mesa 1] tablero a los 24226 ms (movimientos=1264, capturas=5)
+trono: . . o
+. . o . . 
+. o o . . 
+. . . o . 
+. . . o P 
+. . o . . 
+capturas: 5
+[Mesa 1] tablero a los 26255 ms (movimientos=1366, capturas=5)
+trono: . . .
+. . o . . 
+. . o P o 
+. . . o . 
+. . . . o 
+. . o . o 
+capturas: 5
+[Mesa 1] tablero a los 28268 ms (movimientos=1476, capturas=5)
+trono: . . o
+P o . . . 
+. o . o . 
+. . . . . 
+. o . . . 
+o . o . . 
+capturas: 5
+[Mesa 1] fin: gana nadie (tope de tiempo) (capturas=5, movimientos=1562)
+trono: . . o
+o . . . . 
+. o . . . 
+. o . . . 
+P . . o . 
+. . . o o 
+capturas: 5
+=== Servidor cerrado: 3 mesas atendidas (activas=0) ===
