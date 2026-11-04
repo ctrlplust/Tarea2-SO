@@ -3,7 +3,6 @@ CFLAGS = -Wall -Wextra -std=c17 -pthread -g
 P      ?= paso1
 BASE    = src/tablero.c
 
-# Regla por defecto: el entregable es torneo (servidor es preliminar, va aparte)
 all: torneo
 
 # Binario de torneo (según pide el enunciado en la raíz)
