@@ -1,5 +1,9 @@
 # torneo de komikan concurrente
 
+ **Informe:** esta en el docs
+
+Tomas Nunez - Benjamin Zuniga
+
 el torneo lee un `config.txt` opcional, arma N jugadores, los empareja de a dos y
 corre cada partida en una mesa con 13 hilos: un puma y 12 perros moviendose al
 mismo tiempo, sin turnos. nunca hay mas de **M** mesas vivas al mismo tiempo.
@@ -7,7 +11,7 @@ mismo tiempo, sin turnos. nunca hay mas de **M** mesas vivas al mismo tiempo.
 las cosas que hay que tener a mano:
 
 ```sh
-make                        # compila ./torneo
+make torneo                 # compila ./torneo
 ./torneo 20 2               # 20 jugadores, 2 mesas
 ./torneo 6 2 mi_config.txt  # con configuracion propia
 make paso2 && ./bin/paso2   # la prueba de la carrera
@@ -24,7 +28,7 @@ src/tablero.c      el tablero como grafo, los saltos y las reglas
 src/config.c       el parser de config.txt
 src/paso1.c ...    la construccion por partes, un archivo por paso
 tests/             test_cases.txt, los 12 casos de la pauta
-docs/              el enunciado en pdf
+docs/              informe (2 pags) + enunciado en pdf
 ```
 
 `./torneo` queda en la raiz a proposito: el enunciado pide ejecutar
@@ -39,7 +43,7 @@ gcc -Wall -Wextra -std=c17 -pthread -g -o torneo \
 
 son los flags de la pauta mas `-g` para poder mirar los core si algo revienta.
 compila sin un solo warning. `-pthread` aca si se usa: todo el programa son
-hilos POSIX. `make` corre exactamente esa linea.
+hilos POSIX. `make torneo` (y `make` por defecto) corre exactamente esa linea.
 
 el detalle que hace falta: con `-std=c17` (que es ISO estricto) glibc esconde
 las declaraciones POSIX, asi que los archivos que usan `sigwait`, `usleep` o
@@ -104,9 +108,9 @@ los 12 perros no se configuran: arrancan en las 12 casillas del borde, en un
 orden fijo, y se corren a la siguiente si el puma empieza justo en una de ellas.
 `PUMA_INIT` mueve solo al puma.
 
-`tests/test_cases.txt` trae los 12 casos de la pauta. de cada caso se lee solo la
-linea `CONFIG`; las lineas `EVENT` todavia no se interpretan, los movimientos los
-elige cada ficha al azar con la semilla. por eso se corre un caso por vez:
+`tests/test_cases.txt` trae los 12 casos de la pauta. el parser toma la primera
+linea `CONFIG` valida del archivo (las lineas `EVENT` no se interpretan; los
+movimientos los elige cada ficha al azar con la semilla):
 
 ```sh
 ./torneo 2 1 tests/test_cases.txt
@@ -253,7 +257,7 @@ Makefile:
 
 ```sh
 ./torneo 20 2      # en otra terminal, Ctrl+C
-pgrep torneo       # no debe imprimir nada
+pgrep -x torneo    # no debe imprimir nada
 ```
 
 ## los pasos
@@ -289,8 +293,8 @@ murio. por eso el torneo usa mutex robusto y no semaforo para el tablero.
 - ThreadSanitizer no entiende los mutex robustos: en `paso8` puede marcar un
   warning en `mesa_lock` que es un falso positivo. en `paso3`, `paso4` y
   `torneo` da 0.
-- `src/servidor.c` quedo de una version anterior y el Makefile no lo compila; el
-  entregable es `torneo`.
+- `src/servidor.c` es una version preliminar; no forma parte del target por
+  defecto (`all: torneo`), ya que el entregable final es `./torneo`.
 
 ## decisiones de diseno
 
@@ -346,5 +350,6 @@ murio. por eso el torneo usa mutex robusto y no semaforo para el tablero.
 | `src/config.c`, `src/config.h` | el parser de `config.txt` |
 | `src/paso1.c` ... `src/paso8.c` | la construccion paso a paso |
 | `tests/test_cases.txt` | los 12 casos de la pauta |
+| `docs/Informe_T2_Komikan.pdf` | el informe (2 paginas) |
 | `docs/T2_os_2026_02.pdf` | el enunciado |
 | `Makefile` | `all`, `pasoN`, `tsan`, `asan`, `clean` |
