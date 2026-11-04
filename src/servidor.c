@@ -8,6 +8,11 @@
 #include <unistd.h>
 #include <signal.h>
 #include <assert.h>
+#include <time.h>
+
+#include "config.h"
+#include "mesa.h"
+#include "tablero.h"
 
 // --- ESTRUCTURA DE CONFIGURACIÓN (Paso 6) ---
 typedef struct {
@@ -80,6 +85,9 @@ void manejador_sigint(int sig) {
     }
 }
 
+static int servidor_debe_abortar(void) {
+    return !servidor_activo;
+}
 // --- HILO DE MESA DE JUEGO (Paso 5) ---
 void *hilo_mesa(void *arg) {
     DatosMesa *datos = (DatosMesa *)arg;
@@ -87,12 +95,30 @@ void *hilo_mesa(void *arg) {
     printf("  [Mesa %d] Partida iniciada: Puma (Jugador %d) vs Perro (Jugador %d)\n",
            datos->id_mesa, datos->id_puma, datos->id_perro);
 
-    // Simulación del tiempo de juego
-    for (int i = 0; i < 10 && servidor_activo; i++) {
-        usleep(20000);
-    }
+    // Configuración de la partida (posicion inicial Puma 2,2 grilla central)
+    Config cfg = {
+        .seed = (unsigned)time(NULL) + datos->id_mesa,
+        .delay_min = 10,
+        .delay_max = 50,
+        .puma_fila = 2,
+        .puma_col = 2,
+        .desconexion_pct = 0,
+        .timeout_ms = 30000
+    };
 
-    printf("  [Mesa %d] Partida finalizada.\n", datos->id_mesa);
+    // Ejecuta la lógica del juego de Tomi
+    int resultado = jugar_partida(datos->id_mesa, &cfg, servidor_debe_abortar);
+
+    // Reporte de resultados
+    if (resultado == 0) {
+        printf("  [Mesa %d] Partida finalizada: ¡Ganó el Puma!\n", datos->id_mesa);
+    } else if (resultado == 1) {
+        printf("  [Mesa %d] Partida finalizada: ¡Ganaron los Perros!\n", datos->id_mesa);
+    } else if (resultado == 2) {
+        printf("  [Mesa %d] Partida finalizada: Tiempo/Movimientos agotados.\n", datos->id_mesa);
+    } else {
+        printf("  [Mesa %d] Partida abortada por cierre del servidor.\n", datos->id_mesa);
+    }
 
     pthread_mutex_lock(&mutex_estado);
     mesas_activas--;
@@ -102,7 +128,6 @@ void *hilo_mesa(void *arg) {
     free(datos);
     return NULL;
 }
-
 // --- HILO JUGADOR / MATCHMAKER (Paso 5) ---
 void *hilo_jugador(void *arg) {
     int id = *(int *)arg;
